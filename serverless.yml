@@ -94,6 +94,8 @@ resources:
             AttributeType: S
           - AttributeName: store_id
             AttributeType: S
+          - AttributeName: date
+            AttributeType: S
         KeySchema:
           - AttributeName: id
             KeyType: HASH
@@ -102,5 +104,7 @@ resources:
             KeySchema:
               - AttributeName: store_id
                 KeyType: HASH
+              - AttributeName: date
+                KeyType: RANGE
             Projection:
               ProjectionType: ALL

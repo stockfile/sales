@@ -46,6 +46,7 @@ func CreateSale(ctx context.Context, request events.APIGatewayProxyRequest) (eve
 	log.Println("CreateSale")
 
 	storeId := request.RequestContext.Authorizer["SF-Store-Id"].(string)
+	scanIndexForward := false
 
 	queryInput := &dynamodb.QueryInput{
 		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
@@ -56,6 +57,7 @@ func CreateSale(ctx context.Context, request events.APIGatewayProxyRequest) (eve
 		KeyConditionExpression: aws.String("store_id = :store_id"),
 		TableName:              aws.String(os.Getenv("TABLE_NAME")),
 		IndexName:              aws.String(os.Getenv("STORE_INDEX_NAME")),
+		ScanIndexForward:       &scanIndexForward,
 	}
 
 	if result, err := ddb.Query(queryInput); err != nil {
