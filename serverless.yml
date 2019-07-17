@@ -53,6 +53,13 @@ package:
   - ./**
 
 functions:
+  CreateSale:
+    handler: bin/handlers/CreateSale
+    events:
+      - http:
+          path: /sales
+          method: post
+          authorizer: ${self:custom.jwtAuthorizer}
 
 resources:
   Resources:
