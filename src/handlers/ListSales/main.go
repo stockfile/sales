@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"log"
 	"os"
-	"time"
 
 	"github.com/aws/aws-lambda-go/events"
 	"github.com/aws/aws-lambda-go/lambda"
@@ -13,8 +12,6 @@ import (
 	"github.com/aws/aws-sdk-go/aws/session"
 	"github.com/aws/aws-sdk-go/service/dynamodb"
 	"github.com/aws/aws-sdk-go/service/dynamodb/dynamodbattribute"
-
-	uuid "github.com/satori/go.uuid"
 )
 
 type Sale struct {
@@ -29,7 +26,7 @@ type Sale struct {
 }
 
 type Response struct {
-	Sale Sale `json:"sale"`
+	Sales []Sale `json:"sales"`
 }
 
 var ddb *dynamodb.DynamoDB
@@ -39,7 +36,7 @@ func init() {
 	if session, err := session.NewSession(&aws.Config{
 		Region: &region,
 	}); err != nil {
-		log.Println("Can't connect")
+		log.Println("Failed to connect")
 	} else {
 		ddb = dynamodb.New(session) // Create DynamoDB client
 	}
@@ -48,42 +45,39 @@ func init() {
 func CreateSale(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 	log.Println("CreateSale")
 
-	userId := request.RequestContext.Authorizer["SF-User-Id"].(string)
 	storeId := request.RequestContext.Authorizer["SF-Store-Id"].(string)
 
-	var (
-		id        = uuid.Must(uuid.NewV4(), nil).String()
-		tableName = aws.String(os.Getenv("TABLE_NAME"))
-		timestamp = time.Now().Format(time.RFC3339)
-	)
-
-	sale := &Sale{
-		ID:        id,
-		UserId:    userId,
-		StoreId:   storeId,
-		CreatedAt: timestamp,
-		UpdatedAt: timestamp,
+	queryInput := &dynamodb.QueryInput{
+		ExpressionAttributeValues: map[string]*dynamodb.AttributeValue{
+			":store_id": {
+				S: aws.String(storeId),
+			},
+		},
+		KeyConditionExpression: aws.String("store_id = :store_id"),
+		TableName:              aws.String(os.Getenv("TABLE_NAME")),
+		IndexName:              aws.String(os.Getenv("STORE_INDEX_NAME")),
 	}
 
-	// Parse request body
-	json.Unmarshal([]byte(request.Body), sale)
-
-	// Write to DynamoDB
-	item, _ := dynamodbattribute.MarshalMap(sale)
-	input := &dynamodb.PutItemInput{
-		Item:      item,
-		TableName: tableName,
-	}
-
-	if _, err := ddb.PutItem(input); err != nil {
+	if result, err := ddb.Query(queryInput); err != nil {
 		return events.APIGatewayProxyResponse{ // Error HTTP response
 			Body:       err.Error(),
 			StatusCode: 500,
 		}, nil
 	} else {
+		sales := []Sale{}
+		err = dynamodbattribute.UnmarshalListOfMaps(result.Items, &sales)
+
+		if err != nil {
+			return events.APIGatewayProxyResponse{ // Error HTTP response
+				Body:       err.Error(),
+				StatusCode: 500,
+			}, nil
+		}
+
 		body, _ := json.Marshal(&Response{
-			Sale: *sale,
+			Sales: sales,
 		})
+
 		return events.APIGatewayProxyResponse{ // Success HTTP response
 			Body:       string(body),
 			StatusCode: 200,
