@@ -3,7 +3,6 @@ package main
 import (
 	"context"
 	"encoding/json"
-	"fmt"
 	"os"
 
 	"github.com/aws/aws-lambda-go/events"
@@ -22,8 +21,6 @@ type Response struct {
 
 func ListSales(ctx context.Context, request events.APIGatewayProxyRequest) (events.APIGatewayProxyResponse, error) {
 	storeID := request.RequestContext.Authorizer["SF-Store-Id"].(string)
-	fmt.Sprintf("Store ID Passed: %s", storeID)
-
 	sales := querySalesByStoreId(storeID)
 
 	body, _ := json.Marshal(&Response{
