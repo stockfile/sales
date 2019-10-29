@@ -34,7 +34,6 @@ func RenderClientError(errorMessage string, statusCode int) (events.APIGatewayPr
 }
 
 func RenderSuccess(bodyMessage []byte) (events.APIGatewayProxyResponse, error) {
-
 	return events.APIGatewayProxyResponse{
 		Body:       string(bodyMessage),
 		StatusCode: http.StatusOK,
